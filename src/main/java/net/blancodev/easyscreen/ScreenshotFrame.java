@@ -29,7 +29,7 @@ public class ScreenshotFrame extends JFrame {
         // Store the renderable image buttons and their functions
         ImageButton[] imageButtons = {
                 new ImageButton(0,0,0,0, () -> {
-                    BufferedImage croppedImage = bufferedImage.getSubimage((int) visibleRectangle.getX(), (int) visibleRectangle.getY(), (int) visibleRectangle.getMaxX(), (int) visibleRectangle.getMaxY());
+                    BufferedImage croppedImage = bufferedImage.getSubimage((int) visibleRectangle.getX(), (int) visibleRectangle.getY(), (int) visibleRectangle.getWidth(), (int) visibleRectangle.getHeight());
                     Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new TransferableImage(croppedImage), null);
                 })
         };
@@ -77,6 +77,8 @@ public class ScreenshotFrame extends JFrame {
                     // TODO: support backwards selection
                     if (width >= 0 && height >= 0) {
                         rectangle.setRect(rectangle.getMinX(), rectangle.getMinY(), width, height);
+                    } else {
+                        rectangle.setRect(mouseEvent.getX(), mouseEvent.getY(), rectangle.getMaxX(), rectangle.getMaxY());
                     }
                 }
 
@@ -130,7 +132,7 @@ public class ScreenshotFrame extends JFrame {
                             || h == (rectangle.getY() + (rectangle.getMaxY() - rectangle.getY())) + 1) {
                         copy.setRGB(Math.min(w, w + 1), Math.min(h, h + 1), Color.BLACK.getRGB());
                     } else {
-                        copy.setRGB(w, h, new Color(copy.getRGB(w, h)).darker().getRGB());
+                        copy.setRGB(w, h, new Color(copy.getRGB(w, h)).darker().darker().getRGB());
                     }
 
                 }

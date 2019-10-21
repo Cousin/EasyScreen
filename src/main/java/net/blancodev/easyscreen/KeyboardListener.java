@@ -23,11 +23,7 @@ public class KeyboardListener implements NativeKeyListener {
                     image = new Robot().createScreenCapture(new Rectangle(Toolkit.getDefaultToolkit().getScreenSize()));
                 } catch (AWTException e) {
                     e.printStackTrace();
-                }
-                try {
-                    ImageIO.write(image, "png", new File("screenshot.png"));
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    return;
                 }
                 currentFrame = new ScreenshotFrame(image);
             }
