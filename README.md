@@ -1,7 +1,8 @@
 # EasyScreen
 A simple to use screenshot program designed for all operating systems, but made because there's no good *simple* screenshot program for Linux.
 
-Needs a lot of cleanup.
+Never finished, pretty messy just keeping posted for anyone curious. 
 
-Press prntscr to open screenshot.
-Currently only have a copy to clipboard function, soon to have save and upload to web.
+Everything should work fine besides upload feature as server was taken down.
+
+May re-write in future
