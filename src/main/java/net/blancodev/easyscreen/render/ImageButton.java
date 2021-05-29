@@ -1,6 +1,10 @@
 package net.blancodev.easyscreen.render;
 
+import net.blancodev.easyscreen.frame.ScreenshotFrame;
+
+import javax.swing.*;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 
 // Class to encapsulate where images are rendered and handle clicks
 public class ImageButton {
@@ -12,25 +16,25 @@ public class ImageButton {
 
     private int x,y;
 
-    private Runnable runnable;
+    private Consumer<ScreenshotFrame> consumer;
 
     private boolean hovering;
 
-    public ImageButton(BufferedImage image, BufferedImage hoverImage, String tooltip, Runnable runnable) {
+    public ImageButton(BufferedImage image, BufferedImage hoverImage, String tooltip, Consumer<ScreenshotFrame> consumer) {
         this.image = image;
         this.hoverImage = hoverImage;
         this.tooltip = tooltip;
         this.x = x;
         this.y = y;
-        this.runnable = runnable;
+        this.consumer = consumer;
         this.hovering = false;
     }
 
     // Check if click was inside correct bounds
-    public boolean handleClick(int clickedX, int clickedY) {
+    public boolean handleClick(ScreenshotFrame jFrame, int clickedX, int clickedY) {
 
         if (withinBounds(clickedX, clickedY)) {
-            runnable.run();
+            consumer.accept(jFrame);
             return true;
         }
 
@@ -73,8 +77,8 @@ public class ImageButton {
         return y;
     }
 
-    public Runnable getRunnable() {
-        return runnable;
+    public Consumer<ScreenshotFrame> getConsumer() {
+        return consumer;
     }
 
     public boolean isHovering() {

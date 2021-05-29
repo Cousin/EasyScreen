@@ -8,15 +8,21 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
+import java.net.URLEncoder;
 
 public class UploadFrame extends JFrame {
 
-    public UploadFrame(String base64) {
+    public UploadFrame(String base64, boolean searchGoogle) {
+
+        System.out.println(base64);
 
         setSize(500, 75);
         setResizable(false);
+
+        setIconImage(EasyScreen.loadFromResource("icon.png"));
 
         JProgressBar progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
@@ -31,20 +37,32 @@ public class UploadFrame extends JFrame {
 
         new Thread(() -> {
             ConnectionBuilder uploadRequest = new ConnectionBuilder(
-                    "https://betanyan.xyz/easyscreen/upload.php"
-            ).https(true).method("POST").data("base64=" + base64).send();
+                    "https://blancodev.net/easyscreen/upload.php"
+            ).https(true).method(ConnectionBuilder.ConnectionMethod.POST).data("base64=" + URLEncoder.encode(base64)).send();
 
             String url = uploadRequest.getResponse();
 
-            SwingUtilities.invokeLater(() -> {
-                setTitle("Uploaded!");
-                remove(progressBar);
-                add(getSuccessJPanel(url));
-                revalidate();
-                repaint();
-            });
+            if (searchGoogle) {
+                try {
+                    Desktop.getDesktop().browse(new URL("https://www.google.com/searchbyimage?image_url=" + url).toURI());
+                } catch (Exception e) { }
+                EasyScreen.closeFrame(UploadFrame.this);
+            } else {
+                SwingUtilities.invokeLater(() -> {
+                    setTitle("Uploaded!");
+                    remove(progressBar);
+                    add(getSuccessJPanel(url));
+                    revalidate();
+                    repaint();
+                });
+            }
         }).start();
 
+        //
+
+        toFront();
+
+        EasyScreen.getOpenFrames().add(this);
     }
 
     private JPanel getSuccessJPanel(String url) {
@@ -62,6 +80,7 @@ public class UploadFrame extends JFrame {
             try {
                 Desktop.getDesktop().browse(new URL(urlTextField.getText()).toURI());
             } catch (Exception e) { }
+            EasyScreen.closeFrame(UploadFrame.this);
         });
 
         JButton copyButton = new JButton("Copy");
@@ -69,6 +88,7 @@ public class UploadFrame extends JFrame {
             StringSelection stringSelection = new StringSelection(urlTextField.getText());
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(stringSelection, stringSelection);
+            EasyScreen.closeFrame(UploadFrame.this);
         });
 
         jPanel.add(openButton);

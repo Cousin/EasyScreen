@@ -1,5 +1,6 @@
 package net.blancodev.easyscreen.render;
 
+import net.blancodev.easyscreen.frame.ScreenshotFrame;
 import oracle.jrockit.jfr.JFR;
 
 import javax.swing.*;
@@ -12,9 +13,10 @@ import java.util.Currency;
 
 public class SelectionRectangle {
 
-    private JFrame jFrame;
+    private ScreenshotFrame jFrame;
     private BufferedImage originalImage;
     private BufferedImage darkerImage;
+    private BufferedImage paintLayer;
     private Rectangle rectangle;
 
     //private Point topLeft, topMiddle, topRight, left, right, bottomLeft, bottomMiddle, bottomRight;
@@ -25,7 +27,7 @@ public class SelectionRectangle {
 
     private int lastPressedPoint;
 
-    public SelectionRectangle(JFrame jFrame, BufferedImage originalImage, Rectangle rectangle) {
+    public SelectionRectangle(ScreenshotFrame jFrame, BufferedImage originalImage, Rectangle rectangle) {
         this.jFrame = jFrame;
         this.rectangle = rectangle;
         this.selectorPoints = new Point[8];
@@ -40,6 +42,11 @@ public class SelectionRectangle {
             for (int h = 0; h < darkerImage.getHeight(); h++) {
                 darkerImage.setRGB(w, h, new Color(darkerImage.getRGB(w, h)).darker().darker().getRGB());
             }
+        }
+
+        this.paintLayer = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        {
+            ((Graphics2D) this.paintLayer.getGraphics()).setBackground(new Color(0, 0, 0, 0));
         }
 
         recalibratePoints();
@@ -142,39 +149,39 @@ public class SelectionRectangle {
             copy.getGraphics().drawImage(
                     originalImage.getSubimage((int) rectangle.getX(), (int) rectangle.getY(), (int) rectangle.getWidth(), (int) rectangle.getHeight()), (int) rectangle.getMinX(), (int) rectangle.getMinY(), jFrame
             );
+            copy.getGraphics().drawImage(paintLayer, 0, 0, jFrame);
         } catch (RasterFormatException x) {}
 
-        // Draw border
+        boolean black = true;
+
         for (int w = (int) rectangle.getMinX(); w <= rectangle.getMaxX(); w++) {
-            for (int h = (int) rectangle.getMinY(); h <= rectangle.getMaxY(); h++) {
-                if (w == rectangle.getMinX() || w == rectangle.getMaxX() || h == rectangle.getMinY() || h == rectangle.getMaxY()) {
-                    copy.setRGB(w, h, w % 2 == 0 && h % 2 == 0 ? Color.BLACK.getRGB() : Color.WHITE.getRGB());
-                }
-            }
+            copy.setRGB(w, (int) rectangle.getMinY(), (black ? Color.BLACK : Color.WHITE).getRGB());
+            copy.setRGB(w, (int) rectangle.getMaxY(), (black ? Color.BLACK : Color.WHITE).getRGB());
+            black = !black;
+        }
+        for (int h = (int) rectangle.getMinY(); h <= rectangle.getMaxY(); h++) {
+            copy.setRGB((int) rectangle.getMinX(), h, (black ? Color.BLACK : Color.WHITE).getRGB());
+            copy.setRGB((int) rectangle.getMaxX(), h, (black ? Color.BLACK : Color.WHITE).getRGB());
+            black = !black;
         }
 
-        // Reloop to render points after everything else, to ensure they're on top.
-        // So far no noticable performance hit by relooping
-        for (int w = (int) rectangle.getMinX(); w <= rectangle.getMaxX(); w++) {
-            for (int h = (int) rectangle.getMinY(); h <= rectangle.getMaxY(); h++) {
-                for (Point point : selectorPoints) {
-                    if (point.x == w && point.y == h) {
+        for (Point point : selectorPoints) {
 
-                        // Draw square for selection point
-                        for (int x = w - 3; x < w + 3; x++) {
-                            for (int y = h - 3; y < h + 3; y++) {
-                                if (x >= 0 && y >= 0 && x < originalImage.getWidth() && y < originalImage.getHeight()) {
-                                    if (x == w - 3 || x == w + 2 || y == h - 3 || y == h + 2) {
-                                        copy.setRGB(x, y, Color.WHITE.getRGB());
-                                    } else {
-                                        copy.setRGB(x, y, Color.BLACK.getRGB());
-                                    }
-                                }
-                            }
+            int w = point.x;
+            int h = point.y;
+
+            for (int x = w - 3; x < w + 3; x++) {
+                for (int y = h - 3; y < h + 3; y++) {
+                    if (x >= 0 && y >= 0 && x < originalImage.getWidth() && y < originalImage.getHeight()) {
+                        if (x == w - 3 || x == w + 2 || y == h - 3 || y == h + 2) {
+                            copy.setRGB(x, y, Color.WHITE.getRGB());
+                        } else {
+                            copy.setRGB(x, y, Color.BLACK.getRGB());
                         }
                     }
                 }
             }
+
         }
 
         return copy;
@@ -182,11 +189,19 @@ public class SelectionRectangle {
     }
 
     public BufferedImage getSelectionImage() {
-        return originalImage.getSubimage(
+
+        BufferedImage copy = copyImage(originalImage);
+        copy.getGraphics().drawImage(paintLayer, 0, 0, jFrame);
+
+        return copy.getSubimage(
                 (int) rectangle.getX(),
                 (int) rectangle.getY(),
                 (int) rectangle.getWidth(),
                 (int) rectangle.getHeight());
+    }
+
+    public BufferedImage getOriginalImage() {
+        return originalImage;
     }
 
     public void onMouseDrag(Point mousePoint) {
@@ -331,11 +346,15 @@ public class SelectionRectangle {
         }
 
         if (!cursorEdited) {
-            if (mousePoint.getX() >= rectangle.getMinX() && mousePoint.getX() <= rectangle.getMaxX()
-                    && mousePoint.getY() >= rectangle.getMinY() && mousePoint.getY() <= rectangle.getMaxY()) {
-                jFrame.setCursor(new Cursor(Cursor.MOVE_CURSOR));
+            if (jFrame.isPainting()) {
+                jFrame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
             } else {
-                jFrame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                if (mousePoint.getX() >= rectangle.getMinX() && mousePoint.getX() <= rectangle.getMaxX()
+                        && mousePoint.getY() >= rectangle.getMinY() && mousePoint.getY() <= rectangle.getMaxY()) {
+                    jFrame.setCursor(new Cursor(Cursor.MOVE_CURSOR));
+                } else {
+                    jFrame.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                }
             }
         }
 
@@ -355,6 +374,10 @@ public class SelectionRectangle {
         graphics.drawImage(bufferedImage, 0, 0, null);
         graphics.dispose();
         return copy;
+    }
+
+    public BufferedImage getPaintLayer() {
+        return paintLayer;
     }
 
     public Rectangle getRectangle() {

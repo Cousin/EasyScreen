@@ -1,38 +1,39 @@
 package net.blancodev.easyscreen;
 
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.net.*;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.X509Certificate;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.Proxy;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class ConnectionBuilder {
 
-    private final static String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36";
+    private final static String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.149 Safari/537.36";
 
     private String endpoint;
     private int port;
 
     private String data;
-    private String method;
+    private ConnectionMethod method;
 
     private Proxy proxy;
 
     private boolean https;
 
+    private int timeout;
+
     private Map<String, String> headers;
 
     private HttpURLConnection finalConnection;
+
+    private static final Map<String, URL> urlCache = new HashMap<>();
 
     public boolean failed;
 
@@ -41,10 +42,17 @@ public class ConnectionBuilder {
         this.endpoint = endpoint;
         this.port = 80;
         this.data = new String();
+        this.timeout = 5000;
         this.headers = new HashMap<>();
-        this.method = "GET";
+        this.method = ConnectionMethod.GET;
         this.https = false;
 
+        urlCache.computeIfAbsent(endpoint, k -> {
+            try {
+                return new URL(endpoint);
+            } catch (MalformedURLException e) { }
+            return null;
+        });
     }
 
     public ConnectionBuilder https(boolean https) {
@@ -79,7 +87,7 @@ public class ConnectionBuilder {
 
     }
 
-    public ConnectionBuilder method(String method) {
+    public ConnectionBuilder method(ConnectionMethod method) {
 
         this.method = method;
 
@@ -95,17 +103,25 @@ public class ConnectionBuilder {
 
     }
 
+    public ConnectionBuilder timeout(int timeout) {
+
+        this.timeout = timeout;
+
+        return this;
+
+    }
+
     public ConnectionBuilder send() {
 
         try {
 
-            if (method.equalsIgnoreCase("POST")) {
+            if (method == ConnectionMethod.POST) {
 
                 HttpURLConnection connection;
                 if (https) {
 
                     //random ass shit i took off stackoverflow that made it work.. dont ask
-                    CookieHandler.setDefault(new CookieManager());
+                   /* CookieHandler.setDefault(new CookieManager());
                     TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
                         public X509Certificate[] getAcceptedIssuers() {
                             return null;
@@ -121,26 +137,30 @@ public class ConnectionBuilder {
                     try {
                         sc = SSLContext.getInstance("SSL");
                     } catch (NoSuchAlgorithmException e) {
-                        e.printStackTrace();
+                      //  e.printStackTrace();
                     }
                     try {
                         sc.init(null, trustAllCerts, new java.security.SecureRandom());
                     } catch (KeyManagementException e) {
-                        e.printStackTrace();
+                       // e.printStackTrace();
                     }
-                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());*/
                     if (proxy != null) {
-                        connection = (HttpsURLConnection) new URL(endpoint).openConnection(proxy);
+                        connection = (HttpsURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection(proxy);
                     } else {
-                        connection = (HttpsURLConnection) new URL(endpoint).openConnection();
+                        connection = (HttpsURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection();
                     }
                 } else {
-                    connection = (HttpURLConnection) new URL(endpoint).openConnection();
+                    if (proxy != null) {
+                        connection = (HttpURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection(proxy);
+                    } else {
+                        connection = (HttpURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection();
+                    }
                 }
 
-                connection.setInstanceFollowRedirects(false);
-                connection.setConnectTimeout(20_000);
-                connection.setReadTimeout(20_000);
+             //   connection.setInstanceFollowRedirects(false);
+                connection.setConnectTimeout(timeout);
+                connection.setReadTimeout(timeout);
                 connection.setDoInput(true);
                 connection.setDoOutput(true);
 
@@ -158,11 +178,11 @@ public class ConnectionBuilder {
 
                 finalConnection = connection;
 
-            } else if (method.equalsIgnoreCase("GET")) {
+            } else if (method == ConnectionMethod.GET) {
 
                 HttpURLConnection connection;
                 if (https) {
-                    CookieHandler.setDefault(new CookieManager());
+                    /*CookieHandler.setDefault(new CookieManager());
                     TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
                         public X509Certificate[] getAcceptedIssuers() {
                             return null;
@@ -178,37 +198,39 @@ public class ConnectionBuilder {
                     try {
                         sc = SSLContext.getInstance("SSL");
                     } catch (NoSuchAlgorithmException e) {
-                        e.printStackTrace();
+                     //   e.printStackTrace();
                     }
                     try {
                         sc.init(null, trustAllCerts, new java.security.SecureRandom());
                     } catch (KeyManagementException e) {
-                        e.printStackTrace();
+                        //e.printStackTrace();
                     }
-                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+                    HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());*/
                     if (proxy != null) {
-                        connection = (HttpsURLConnection) new URL(endpoint).openConnection(proxy);
+                        connection = (HttpsURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection(proxy);
                     } else {
-                        connection = (HttpsURLConnection) new URL(endpoint).openConnection();
+                        connection = (HttpsURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection();
                     }
                 } else {
-                    connection = (HttpURLConnection) new URL(endpoint).openConnection();
+                    if (proxy != null) {
+                        connection = (HttpURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection(proxy);
+                    } else {
+                        connection = (HttpURLConnection) urlCache.getOrDefault(endpoint, new URL(endpoint)).openConnection();
+                    }
                 }
 
-                connection.setInstanceFollowRedirects(false);
+               // connection.setInstanceFollowRedirects(false);
 
-                connection.setRequestMethod("GET");
+               // connection.setRequestMethod("GET");
                 connection.setRequestProperty("User-Agent", USER_AGENT);
 
                 for (Map.Entry<String, String> entry : headers.entrySet()) {
                     connection.setRequestProperty(entry.getKey(), entry.getValue());
                 }
 
-                connection.setConnectTimeout(25_000);
+                connection.setConnectTimeout(timeout);
+                connection.setReadTimeout(timeout);
                 connection.setDoOutput(true);
-
-                connection.getResponseCode();
-                connection.connect();
 
                 finalConnection = connection;
 
@@ -216,8 +238,8 @@ public class ConnectionBuilder {
 
 
         } catch (Exception e) {
-            System.out.println("Connection error " + (proxy != null ? "Using Proxy " + proxy : ""));
-            System.out.println(e.getMessage());
+         //   System.out.println("Connection error " + (proxy != null ? "Using Proxy " + proxy : ""));
+         //   System.out.println(e.getMessage());
             failed = true;
         }
 
@@ -229,9 +251,7 @@ public class ConnectionBuilder {
 
         if (finalConnection != null) {
 
-            System.out.println(finalConnection.getHeaderFields());
-
-            String cookies = "";
+            StringBuilder cookies = new StringBuilder();
 
             for (Map.Entry<String, List<String>> entry : finalConnection.getHeaderFields().entrySet()) {
 
@@ -239,7 +259,7 @@ public class ConnectionBuilder {
 
                     for (String cookie : entry.getValue()) {
 
-                        cookies += cookie + (cookie.endsWith(";") ? "" : ";");
+                        cookies.append(cookie).append(cookie.endsWith(";") ? "" : ";");
 
                     }
 
@@ -247,9 +267,7 @@ public class ConnectionBuilder {
 
             }
 
-            System.out.println("coogas " + cookies);
-
-            return cookies;
+            return cookies.toString();
 
         }
 
@@ -290,16 +308,16 @@ public class ConnectionBuilder {
 
                     BufferedReader reader = new BufferedReader(new InputStreamReader(finalConnection.getInputStream()));
 
-                    String finalRes = "";
+                    StringBuilder finalRes = new StringBuilder();
                     String line;
 
                     while ((line = reader.readLine()) != null) {
-                        finalRes += line;
+                        finalRes.append(line);
                     }
 
                     reader.close();
 
-                    return finalRes;
+                    return finalRes.toString();
 
                 } else {
 
@@ -311,12 +329,12 @@ public class ConnectionBuilder {
                         return "Error grabbing response";
                     }
 
-                    String finalRes = "";
+                    StringBuilder finalRes = new StringBuilder();
                     String line;
 
                     try {
                         while ((line = reader.readLine()) != null) {
-                            finalRes += line;
+                            finalRes.append(line);
                         }
                     } catch (IOException e1) {
                         return "Error grabbing response";
@@ -329,7 +347,7 @@ public class ConnectionBuilder {
                         return "Error grabbing response";
                     }
 
-                    return finalRes;
+                    return finalRes.toString();
 
                 }
             } catch (IOException e) {
@@ -380,5 +398,54 @@ public class ConnectionBuilder {
 
     }
 
+    public static String getUserAgent() {
+        return USER_AGENT;
+    }
+
+    public String getEndpoint() {
+        return endpoint;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public String getData() {
+        return data;
+    }
+
+    public ConnectionMethod getMethod() {
+        return method;
+    }
+
+    public Proxy getProxy() {
+        return proxy;
+    }
+
+    public boolean isHttps() {
+        return https;
+    }
+
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public Map<String, String> getHeaders() {
+        return headers;
+    }
+
+    public static Map<String, URL> getUrlCache() {
+        return urlCache;
+    }
+
+    public boolean isFailed() {
+        return failed;
+    }
+
+    public enum ConnectionMethod {
+
+        POST, GET, PUT;
+
+    }
 
 }
